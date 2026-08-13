@@ -89,7 +89,7 @@ namespace Rochas.SqlWrapper.Helpers
 		/// <summary>
 		/// Parse entity model object instance to SQL ANSI CRUD statements with OFFSET/FETCH pagination
 		/// </summary>
-		public static string ParseEntityPaged(object entity, DatabaseEngine engine, PersistenceAction persistenceAction, object filterEntity = null, int offset = 0, int pageSize = 20, bool filterConjunction = false, string sortAttributes = null, bool orderDescending = false, bool readUncommited = false, Dictionary<string, object> sqlParameters = null, Dictionary<string, DataAggregationType> aggregates = null)
+		public static string ParseEntityPaged(object entity, DatabaseEngine engine, PersistenceAction persistenceAction, object filterEntity = null, int offset = 0, int pageSize = 20, bool filterConjunction = false, string groupAttributes = null, string sortAttributes = null, bool orderDescending = false, bool readUncommited = false, Dictionary<string, object> sqlParameters = null, Dictionary<string, DataAggregationType> aggregates = null)
         {
             try
             {
@@ -107,7 +107,7 @@ namespace Rochas.SqlWrapper.Helpers
                     throw new KeyNotFoundException("Entity key column annotation not found.");
 
                 sqlInstruction = GetSqlInstruction(entity, entityType, entityProps, engine, PersistenceAction.Query, filterEntity,
-                                                   0, filterConjunction, displayAttributes, null, readUncommited, sqlParameters, aggregates);
+                                                   0, filterConjunction, displayAttributes, groupAttributes, readUncommited, sqlParameters, aggregates);
 
                 if ((persistenceAction != PersistenceAction.Add) && (persistenceAction != PersistenceAction.Update))
 				{
@@ -115,7 +115,10 @@ namespace Rochas.SqlWrapper.Helpers
 
                     attributeColumnRelation = EntityReflector.GetPropertiesValueList(entity, entityType, entityProps, persistenceAction, engine);
 
-                    sqlInstruction = string.Format(sqlInstruction, string.Empty, "{0}");
+                    if (!string.IsNullOrEmpty(groupAttributes))
+                        ParseGroupingAttributes(attributeColumnRelation, groupAttributes, engine, ref sqlInstruction);
+                    else
+                        sqlInstruction = string.Format(sqlInstruction, string.Empty, "{0}");
 
                     if (!string.IsNullOrEmpty(sortAttributes))
                     {
