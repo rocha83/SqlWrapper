@@ -27,13 +27,13 @@ Exceptions           --> Exceções de domínio da camada (ex.: PropertyNotLista
 
 ```csharp
 using Rochas.SqlWrapper.Helpers;
-using Rochas.DapperRepository.Specification.Enums;
+using Rochas.Data.Specification.Enums;
 
 var sql = EntitySqlParser.ParseEntity(filtro, DatabaseEngine.SQLite,
                                       PersistenceAction.Query, filtro);
 ```
 
-> Requer as annotations de `Rochas.DapperRepository.Specification` (`[Table]`, `[Key]`, `[Column]` opcional — sem `[Table]` usa o nome da classe, `[Key]` obrigatório).
+> Requer as annotations de `Rochas.Data.Specification` (`[Table]`, `[Key]`, `[Column]` opcional — sem `[Table]` usa o nome da classe, `[Key]` obrigatório).
 
 ## 📌 Suporte a múltiplos bancos
 
