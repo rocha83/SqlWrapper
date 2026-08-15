@@ -13,7 +13,7 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseFile>GNUv2_License.txt</PackageLicenseFile>
     <Version>1.1.2</Version>
-    <PackageReleaseNotes>v1.1.2 - Dependencia migrada para Rochas.Data.Specification (namespace Rochas.Data.Specification.*). Sem mudanca de comportamento: EntitySqlParser/EntityReflector passam a ler annotations/enums do novo pacote contrato.</PackageReleaseNotes>
+    <PackageReleaseNotes>v1.1.2 - Dependency migrated to Rochas.Data.Specification. No behavior change: EntitySqlParser/EntityReflector now read annotations/enums from the new contract package.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
