@@ -5,7 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Data;
 using System.Linq;
 using Xunit;
-using Rochas.DapperRepository.Specification.Enums;
+using Rochas.Data.Specification.Enums;
 using Rochas.SqlWrapper.Exceptions;
 
 namespace Rochas.SqlWrapper.Test

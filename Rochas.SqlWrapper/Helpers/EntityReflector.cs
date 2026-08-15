@@ -8,8 +8,8 @@ using System.Reflection;
 using System.Data;
 using System.Collections;
 using System.Globalization;
-using Rochas.DapperRepository.Specification.Annotations;
-using Rochas.DapperRepository.Specification.Enums;
+using Rochas.Data.Specification.Annotations;
+using Rochas.Data.Specification.Enums;
 using Rochas.SqlWrapper.Exceptions;
 using Rochas.SqlWrapper.Helpers.SQL;
 
@@ -32,6 +32,9 @@ namespace Rochas.SqlWrapper.Helpers
         private static readonly ConcurrentDictionary<PropertyInfo, RelatedEntityAttribute> RelatedEntityAttributes = new();
         private static readonly ConcurrentDictionary<Type, Dictionary<string, string>> ColumnMappingCache = new();
         private static readonly ConcurrentDictionary<Type, PropertyInfo[]> EntityPropsCache = new();
+        private static readonly ConcurrentDictionary<Type, PropertyInfo[]> TypePropsCache = new();
+        private static readonly ConcurrentDictionary<Type, PropertyInfo[]> ClassChildPropsCache = new();
+        private static readonly ConcurrentDictionary<Type, Func<object, object>> TypeValueConvertersCache = new();
 
         /// <summary>
         /// Retorna mapeamentoPropertyName → columnName cacheado por tipo de entidade.
@@ -569,6 +572,215 @@ namespace Rochas.SqlWrapper.Helpers
                 table.Columns.Add(prop.Name, prop.PropertyType);
             }
             return table;
+        }
+
+        /// <summary>
+        /// Inicializa as propriedades de classe do mesmo namespace ainda nulas com novas instâncias.
+        /// </summary>
+        public static void InitNullComposition(object sourceObj)
+        {
+            if (sourceObj != null)
+            {
+                var classType = sourceObj.GetType();
+
+                var classChildProps = ClassChildPropsCache.GetOrAdd(classType, t =>
+                    t.GetProperties().Where(prp => prp.PropertyType.IsClass
+                                          && prp.PropertyType.Namespace.Equals(classType.Namespace)).ToArray());
+
+                if (classChildProps != null)
+                {
+                    foreach (var prp in classChildProps)
+                        if (prp.GetValue(sourceObj, null) == null)
+                            prp.SetValue(sourceObj, Activator.CreateInstance(prp.PropertyType), null);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Copia os valores das propriedades de um objeto para outro.
+        /// </summary>
+        public static void CloneObjectData(object source, object destination)
+        {
+            if (source != null)
+            {
+                var sourceType = source.GetType();
+
+                foreach (var prp in GetObjectProps(source))
+                    if (prp.CanWrite)
+                    {
+                        if ((destination == null) && (sourceType.IsClass))
+                            destination = Activator.CreateInstance(sourceType);
+
+                        var destProp = GetObjectProps(destination, prp.Name);
+
+                        if (destProp.Length > 0)
+                        {
+                            if (!prp.PropertyType.Namespace.Equals(source.GetType().Namespace))
+                            {
+                                if (prp.PropertyType.Name.Equals("List`1"))
+                                {
+                                    var srcListInstance = (IList)prp.GetValue(source, null);
+                                    var dstListInstance = (IList)destProp[0].GetValue(destination, null);
+
+                                    if ((srcListInstance != null) && (dstListInstance != null))
+                                        foreach (var listItem in srcListInstance)
+                                        {
+                                            object destItem = Activator.CreateInstance(listItem.GetType());
+                                            CloneObjectData(listItem, destItem);
+                                            ((IList)dstListInstance).Add(destItem);
+                                        }
+                                }
+                                else
+                                    GetObjectProps(destination, prp.Name)[0].SetValue(destination,
+                                                                prp.GetValue(source, null), null);
+                            }
+                            else
+                                CloneObjectData(prp.GetValue(source, null),
+                                                GetObjectProps(destination, prp.Name)[0]
+                                                .GetValue(destination, null));
+                        }
+                        else
+                        {
+                            var sourceTypeName = source.GetType().Name;
+                            if (sourceTypeName.StartsWith("DynamicClass") || sourceTypeName.Equals("JObject"))
+                                foreach (var child in getObjectChilds(destination))
+                                    CloneObjectData(source, child);
+                        }
+                    }
+            }
+        }
+
+        /// <summary>
+        /// Obtém as propriedades de um objeto, opcionalmente filtrando por nomes ou caminhos compostos.
+        /// </summary>
+        public static PropertyInfo[] GetObjectProps(object source, params object[] filter)
+        {
+            List<PropertyInfo> result = new List<PropertyInfo>();
+
+            if (source != null)
+            {
+                var objProps = TypePropsCache.GetOrAdd(source.GetType(), t => t.GetProperties());
+
+                if (filter.Length > 0)
+                    foreach (var flt in filter)
+                        if (!flt.ToString().Contains("."))
+                        {
+                            foreach (var prp in objProps)
+                                if (prp.Name.Equals(flt.ToString()))
+                                    result.Add(prp);
+                        }
+                        else
+                        {
+                            var child = flt.ToString().Split('.');
+                            var childSource = source.GetType().GetProperty(child[0]);
+                            var childInstance = childSource.GetValue(source, null);
+                            if (childInstance == null)
+                                childInstance = Activator.CreateInstance(childSource.PropertyType);
+                            var childProp = childInstance.GetType().GetProperty(child[1]);
+                            if (childProp != null) result.Add(childProp);
+                        }
+                else
+                {
+                    foreach (var prp in objProps)
+                        result.Add(prp);
+                }
+            }
+
+            return result.ToArray();
+        }
+
+        /// <summary>
+        /// Obtém os valores das propriedades indicadas para uma instância.
+        /// </summary>
+        public static object[] GetObjectPropValues(object source, PropertyInfo[] properties)
+        {
+            List<object> result = new List<object>();
+
+            if (properties != null)
+                foreach (var prp in properties)
+                    result.Add(prp.GetValue(source, null));
+
+            return result.ToArray();
+        }
+
+        /// <summary>
+        /// Converte um valor bruto (DBNull/string) para o tipo indicado.
+        /// </summary>
+        public static object GetTypedValue(Type propType, object propValue)
+        {
+            object typedValue = null;
+
+            if (propValue != null)
+                if (propValue.GetType().FullName.Contains("DBNull")
+                         || propValue.GetType().FullName.Contains("Null"))
+                    typedValue = null;
+                else
+                {
+                    var converter = TypeValueConvertersCache.GetOrAdd(propType, t =>
+                    {
+                        Func<object, object> convert;
+
+                        if (t.FullName.Contains("Int16"))
+                            convert = v => (object)short.Parse(v.ToString());
+                        else if (t.FullName.Contains("Int32"))
+                            convert = v => (object)int.Parse(v.ToString());
+                        else if (t.FullName.Contains("Int64"))
+                            convert = v => (object)long.Parse(v.ToString());
+                        else if (t.FullName.Contains("Decimal"))
+                            convert = v => (object)decimal.Parse(v.ToString());
+                        else if (t.FullName.Contains("Double"))
+                            convert = v => (object)double.Parse(v.ToString());
+                        else if (t.FullName.Contains("Float"))
+                            convert = v => (object)float.Parse(v.ToString());
+                        else if (t.FullName.Contains("Single"))
+                            convert = v => (object)Single.Parse(v.ToString());
+                        else if (t.FullName.Contains("Short"))
+                            convert = v => (object)short.Parse(v.ToString());
+                        else if (t.FullName.Contains("Boolean"))
+                            convert = v => (object)bool.Parse(v.ToString());
+                        else if (t.FullName.Contains("String"))
+                            convert = v => v.ToString();
+                        else if (t.FullName.Contains("DateTime"))
+                            convert = v => (object)DateTime.Parse(v.ToString());
+                        else
+                            convert = v => v;
+
+                        return convert;
+                    });
+
+                    typedValue = converter(propValue);
+                }
+
+            return typedValue;
+        }
+
+        /// <summary>
+        /// Obtém as instâncias das classes filho de um objeto.
+        /// </summary>
+        internal static object[] getObjectChilds(object destination)
+        {
+            var childProps = ClassChildPropsCache.GetOrAdd(destination.GetType(), t =>
+                t.GetProperties().Where(prp => prp.PropertyType.Namespace.Equals(t.Namespace)).ToArray());
+
+            var result = new List<object>();
+            foreach (var child in childProps)
+                result.Add(child.GetValue(destination, null));
+
+            return result.ToArray();
+        }
+
+        /// <summary>
+        /// Cria uma nova instância de T copiando os valores das propriedades da origem.
+        /// </summary>
+        public static T CloneObjectData<T>(object source)
+        {
+            T destination = Activator.CreateInstance<T>();
+
+            foreach (var prp in GetObjectProps(source))
+                GetObjectProps(destination, prp.Name)[0].SetValue(destination,
+                                                           prp.GetValue(source, null), null);
+
+            return destination;
         }
     }
 }
