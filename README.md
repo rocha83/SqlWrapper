@@ -35,6 +35,29 @@ var sql = EntitySqlParser.ParseEntity(filtro, DatabaseEngine.SQLite,
 
 > Requer as annotations de `Rochas.Data.Specification` (`[Table]`, `[Key]`, `[Column]` opcional — sem `[Table]` usa o nome da classe, `[Key]` obrigatório).
 
+---
+
+## 📌 Qualidade e cobertura de testes
+
+A suite de testes unitários (xUnit) cobre `Rochas.SqlWrapper.Test`, validando os quatro dialetos, projeções, `groupAttributes`, agregações, relações, `RangeFilter` e ocorrências de `LIKE` parametrizado.
+
+| Métrica | Valor |
+|---------|-------|
+| Total de testes | **91** |
+| Cobertura de linha — `Rochas.SqlWrapper` | **99,7%** |
+| Linhas cobertas | 981 / 984 |
+
+![line coverage](https://img.shields.io/badge/coverage-line-99.7%25-brightgreen)
+
+Cobertura por classe (`Rochas.SqlWrapper`):
+
+| Classe | Cobertura de linha |
+|--------|--------------------|
+| `EntitySqlParser` | 99,6% |
+| `EntityReflector` | 99,7% |
+| `Helpers.SQL.SQLStatements` | 100% |
+| `Exceptions.PropertyNotListableException` | 100% |
+
 ## 📌 Suporte a múltiplos bancos
 
 | Recurso              | MySQL | SQL Server | PostgreSQL | SQLite |
