@@ -27,15 +27,27 @@ Helpers.SQL.*        --> SQL statement constants/templates per dialect
 Exceptions           --> Domain exceptions of the layer (e.g. PropertyNotListableException)
 ```
 
+`EntityReflector` also exposes the reflection helpers shared with `Rochas.BWOQ`, all cached thread-safely by type:
+
+```text
+GetObjectProps(object, params object[] filter)       --> Cached property list, optional name/path filter
+GetObjectPropValues(object, PropertyInfo[])          --> Property values of an instance
+GetTypedValue(Type, object)                          --> Converts raw value (DBNull/string) to the target type
+InitNullComposition(object)                          --> Initializes null same-namespace class properties
+CloneObjectData(object, object)                      --> Copies property values between instances
+CloneObjectData<T>(object)                           --> Creates a new typed instance copying values
+getObjectChilds(object)                              --> Same-namespace child instances (internal)
+```
+
 ### How to use
 
-Define a model using the annotations of `Rochas.DapperRepository.Specification`:
+Define a model using the annotations of `Rochas.Data.Specification`:
 
 ```csharp
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Rochas.DapperRepository.Specification.Annotations;
+using Rochas.Data.Specification.Annotations;
 
 [Table("sample_entity")]
 public class SampleEntity
@@ -61,7 +73,7 @@ Parse the entity into a SQL statement for the desired dialect:
 
 ```csharp
 using Rochas.SqlWrapper.Helpers;
-using Rochas.DapperRepository.Specification.Enums;
+using Rochas.Data.Specification.Enums;
 
 var filter = new SampleEntity { Name = "roberto" };
 
@@ -77,7 +89,7 @@ var pagedSql = EntitySqlParser.ParseEntityPaged(filter, DatabaseEngine.PostgreSQ
                                                 offset: 10, pageSize: 20);
 ```
 
-> Requires the annotations of `Rochas.DapperRepository.Specification` (`[Table]`, `[Key]`, optional `[Column]` — without `[Table]` the class name is used, `[Key]` is mandatory).
+> Requires the annotations of `Rochas.Data.Specification` (`[Table]`, `[Key]`, optional `[Column]` — without `[Table]` the class name is used, `[Key]` is mandatory).
 
 ### Multi-database support
 
@@ -116,15 +128,27 @@ Helpers.SQL.*        --> Constantes/templates de instruções SQL por dialeto
 Exceptions           --> Exceções de domínio da camada (ex.: PropertyNotListableException)
 ```
 
+O `EntityReflector` também expõe os helpers de reflexão compartilhados com o `Rochas.BWOQ`, todos com cache thread-safe por tipo:
+
+```text
+GetObjectProps(object, params object[] filter)       --> Lista cacheada de propriedades, filtro opcional por nome/caminho
+GetObjectPropValues(object, PropertyInfo[])          --> Valores das propriedades de uma instância
+GetTypedValue(Type, object)                          --> Converte valor bruto (DBNull/string) para o tipo de destino
+InitNullComposition(object)                          --> Inicializa propriedades nulas de classe do mesmo namespace
+CloneObjectData(object, object)                      --> Copia valores de propriedades entre instâncias
+CloneObjectData<T>(object)                           --> Cria uma nova instância tipada copiando valores
+getObjectChilds(object)                              --> Instâncias filhas do mesmo namespace (interno)
+```
+
 ### Como usar
 
-Defina um modelo usando as annotations de `Rochas.DapperRepository.Specification`:
+Defina um modelo usando as annotations de `Rochas.Data.Specification`:
 
 ```csharp
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Rochas.DapperRepository.Specification.Annotations;
+using Rochas.Data.Specification.Annotations;
 
 [Table("sample_entity")]
 public class SampleEntity
@@ -150,7 +174,7 @@ Faça o parse da entidade em uma instrução SQL para o dialeto desejado:
 
 ```csharp
 using Rochas.SqlWrapper.Helpers;
-using Rochas.DapperRepository.Specification.Enums;
+using Rochas.Data.Specification.Enums;
 
 var filter = new SampleEntity { Name = "roberto" };
 
@@ -166,7 +190,7 @@ var pagedSql = EntitySqlParser.ParseEntityPaged(filter, DatabaseEngine.PostgreSQ
                                                 offset: 10, pageSize: 20);
 ```
 
-> Requer as annotations de `Rochas.DapperRepository.Specification` (`[Table]`, `[Key]`, `[Column]` opcional — sem `[Table]` usa o nome da classe, `[Key]` obrigatório).
+> Requer as annotations de `Rochas.Data.Specification` (`[Table]`, `[Key]`, `[Column]` opcional — sem `[Table]` usa o nome da classe, `[Key]` obrigatório).
 
 ### Suporte a múltiplos bancos
 
@@ -205,15 +229,27 @@ Helpers.SQL.*        --> Constantes/plantillas de sentencias SQL por dialecto
 Exceptions           --> Excepciones de dominio de la capa (ej.: PropertyNotListableException)
 ```
 
+`EntityReflector` también expone los helpers de reflexión compartidos con `Rochas.BWOQ`, todos con caché thread-safe por tipo:
+
+```text
+GetObjectProps(object, params object[] filter)       --> Lista cacheada de propiedades, filtro opcional por nombre/ruta
+GetObjectPropValues(object, PropertyInfo[])          --> Valores de las propiedades de una instancia
+GetTypedValue(Type, object)                          --> Convierte valor bruto (DBNull/string) al tipo de destino
+InitNullComposition(object)                          --> Inicializa propiedades nulas de clase del mismo espacio de nombres
+CloneObjectData(object, object)                      --> Copia valores de propiedades entre instancias
+CloneObjectData<T>(object)                           --> Crea una nueva instancia tipada copiando valores
+getObjectChilds(object)                              --> Instancias hijas del mismo espacio de nombres (interno)
+```
+
 ### Cómo usar
 
-Defina un modelo usando las anotaciones de `Rochas.DapperRepository.Specification`:
+Defina un modelo usando las anotaciones de `Rochas.Data.Specification`:
 
 ```csharp
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Rochas.DapperRepository.Specification.Annotations;
+using Rochas.Data.Specification.Annotations;
 
 [Table("sample_entity")]
 public class SampleEntity
@@ -239,7 +275,7 @@ Parsear la entidad en una sentencia SQL para el dialecto deseado:
 
 ```csharp
 using Rochas.SqlWrapper.Helpers;
-using Rochas.DapperRepository.Specification.Enums;
+using Rochas.Data.Specification.Enums;
 
 var filter = new SampleEntity { Name = "roberto" };
 
@@ -255,7 +291,7 @@ var pagedSql = EntitySqlParser.ParseEntityPaged(filter, DatabaseEngine.PostgreSQ
                                                 offset: 10, pageSize: 20);
 ```
 
-> Requiere las anotaciones de `Rochas.DapperRepository.Specification` (`[Table]`, `[Key]`, `[Column]` opcional — sin `[Table]` se usa el nombre de la clase, `[Key]` es obligatorio).
+> Requiere las anotaciones de `Rochas.Data.Specification` (`[Table]`, `[Key]`, `[Column]` opcional — sin `[Table]` se usa el nombre de la clase, `[Key]` es obligatorio).
 
 ### Soporte de múltiples bases de datos
 
@@ -294,15 +330,27 @@ Helpers.SQL.*        --> SQL-Anweisungs-Konstanten/Vorlagen je Dialekt
 Exceptions           --> Domänen-Exceptions der Schicht (z. B. PropertyNotListableException)
 ```
 
+`EntityReflector` stellt außerdem die mit `Rochas.BWOQ` geteilten Reflexions-Helfer bereit, alle thread-sicher pro Typ gecacht:
+
+```text
+GetObjectProps(object, params object[] filter)       --> Gecachte Eigenschaftsliste, optionaler Name/Pfad-Filter
+GetObjectPropValues(object, PropertyInfo[])          --> Eigenschaftswerte einer Instanz
+GetTypedValue(Type, object)                          --> Konvertiert Rohwert (DBNull/string) zum Zieltyp
+InitNullComposition(object)                          --> Initialisiert null-Eigenschaften von Klassen im selben Namespace
+CloneObjectData(object, object)                      --> Kopiert Eigenschaftswerte zwischen Instanzen
+CloneObjectData<T>(object)                           --> Erstellt eine neue typisierte Instanz durch Kopieren der Werte
+getObjectChilds(object)                              --> Kind-Instanzen im selben Namespace (intern)
+```
+
 ### Verwendung
 
-Definieren Sie ein Modell mit den Annotationen von `Rochas.DapperRepository.Specification`:
+Definieren Sie ein Modell mit den Annotationen von `Rochas.Data.Specification`:
 
 ```csharp
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Rochas.DapperRepository.Specification.Annotations;
+using Rochas.Data.Specification.Annotations;
 
 [Table("sample_entity")]
 public class SampleEntity
@@ -328,7 +376,7 @@ Parsen Sie die Entität in eine SQL-Anweisung für den gewünschten Dialekt:
 
 ```csharp
 using Rochas.SqlWrapper.Helpers;
-using Rochas.DapperRepository.Specification.Enums;
+using Rochas.Data.Specification.Enums;
 
 var filter = new SampleEntity { Name = "roberto" };
 
@@ -344,7 +392,7 @@ var pagedSql = EntitySqlParser.ParseEntityPaged(filter, DatabaseEngine.PostgreSQ
                                                 offset: 10, pageSize: 20);
 ```
 
-> Erfordert die Annotationen von `Rochas.DapperRepository.Specification` (`[Table]`, `[Key]`, optional `[Column]` — ohne `[Table]` wird der Klassenname verwendet, `[Key]` ist Pflicht).
+> Erfordert die Annotationen von `Rochas.Data.Specification` (`[Table]`, `[Key]`, optional `[Column]` — ohne `[Table]` wird der Klassenname verwendet, `[Key]` ist Pflicht).
 
 ### Unterstützung mehrerer Datenbanken
 
@@ -383,15 +431,27 @@ Helpers.SQL.*        --> Constantes/modèles d'instructions SQL par dialecte
 Exceptions           --> Exceptions de domaine de la couche (ex. : PropertyNotListableException)
 ```
 
+`EntityReflector` expose également les helpers de réflexion partagés avec `Rochas.BWOQ`, tous mis en cache thread-safely par type :
+
+```text
+GetObjectProps(object, params object[] filter)       --> Liste d'propriétés en cache, filtre optionnel nom/chemin
+GetObjectPropValues(object, PropertyInfo[])          --> Valeurs des propriétés d'une instance
+GetTypedValue(Type, object)                          --> Convertit une valeur brute (DBNull/string) vers le type cible
+InitNullComposition(object)                          --> Initialise les propriétés de classe null du même namespace
+CloneObjectData(object, object)                      --> Copie les valeurs de propriétés entre instances
+CloneObjectData<T>(object)                           --> Crée une nouvelle instance typée en copiant les valeurs
+getObjectChilds(object)                              --> Instances enfants du même namespace (interne)
+```
+
 ### Comment utiliser
 
-Définissez un modèle à l'aide des annotations de `Rochas.DapperRepository.Specification` :
+Définissez un modèle à l'aide des annotations de `Rochas.Data.Specification` :
 
 ```csharp
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Rochas.DapperRepository.Specification.Annotations;
+using Rochas.Data.Specification.Annotations;
 
 [Table("sample_entity")]
 public class SampleEntity
@@ -417,7 +477,7 @@ Analysez l'entité en une instruction SQL pour le dialecte souhaité :
 
 ```csharp
 using Rochas.SqlWrapper.Helpers;
-using Rochas.DapperRepository.Specification.Enums;
+using Rochas.Data.Specification.Enums;
 
 var filter = new SampleEntity { Name = "roberto" };
 
@@ -433,7 +493,7 @@ var pagedSql = EntitySqlParser.ParseEntityPaged(filter, DatabaseEngine.PostgreSQ
                                                 offset: 10, pageSize: 20);
 ```
 
-> Nécessite les annotations de `Rochas.DapperRepository.Specification` (`[Table]`, `[Key]`, `[Column]` optionnel — sans `[Table]`, le nom de la classe est utilisé, `[Key]` est obligatoire).
+> Nécessite les annotations de `Rochas.Data.Specification` (`[Table]`, `[Key]`, `[Column]` optionnel — sans `[Table]`, le nom de la classe est utilisé, `[Key]` est obligatoire).
 
 ### Prise en charge multi-bases de données
 
