@@ -12,8 +12,8 @@
     <PackageTags>sql ansisql mysql sqlserver postgresql sqlite parser translate rochas dapper bwoq</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseFile>GNUv2_License.txt</PackageLicenseFile>
-    <Version>1.0.0</Version>
-    <PackageReleaseNotes>v1.0.0 - Extract shared EntitySqlParser/EntityReflector from Rochas.DapperRepository 1.9.5 into a standalone translation layer used by BWOQ ToSql() and by the DapperRepository ORM. Namespaces now Rochas.SqlWrapper.Helpers and Rochas.SqlWrapper.Helpers.SQL.</PackageReleaseNotes>
+    <Version>1.4.4</Version>
+    <PackageReleaseNotes>v1.4.4 - Build/pack normalization (versioned nupkg at repo root). v1.0.0 - Extract shared EntitySqlParser/EntityReflector from Rochas.DapperRepository 1.9.5 into a standalone translation layer used by BWOQ ToSql() and by the DapperRepository ORM. Namespaces now Rochas.SqlWrapper.Helpers and Rochas.SqlWrapper.Helpers.SQL.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
