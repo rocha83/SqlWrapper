@@ -10,13 +10,12 @@
     <Copyright>Renato Rocha</Copyright>
     <RepositoryType>Git</RepositoryType>
     <RepositoryUrl>https://github.com/rocha83/SqlWrapper</RepositoryUrl>
-    <PackageProjectUrl>https://github.com/rocha83/SqlWrapper</PackageProjectUrl>
     <Description>Rochas SqlWrapper - SQL statement translation layer (multi-dialect) shared by BWOQ and DapperRepository</Description>
     <PackageTags>sql ansisql mysql sqlserver postgresql sqlite parser translate rochas dapper bwoq</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseFile>GNUv2_License.txt</PackageLicenseFile>
-    <Version>1.4.5</Version>
-    <PackageReleaseNotes>v1.4.5 - [FIX] GroupBy com agregados: SELECT só com chaves + expressões (42803 no PostgreSQL). [PERF] EntityReflector com cache. [DOCS] README em 5 idiomas. Referência Data.Specification via NuGet (1.6.3).</PackageReleaseNotes>
+    <Version>1.4.6</Version>
+    <PackageReleaseNotes>v1.4.6 - [FIX] ParseEntityPaged aceita groupAttributes (GROUP BY + agregados em paginadas; resgate da branch data-toolkit-init). v1.4.5 - [FIX] GroupBy com agregados: SELECT só com chaves + expressões (42803 no PostgreSQL). [PERF] EntityReflector com cache. [DOCS] README em 5 idiomas. Referência Data.Specification via NuGet (1.6.3). v1.4.4 - Build/pack normalization. v1.0.0 - Extração do parser/refletor do DapperRepository 1.9.5.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>

@@ -135,6 +135,37 @@ namespace Rochas.SqlWrapper.Test
             Assert.DoesNotContain("doc_number", select, StringComparison.OrdinalIgnoreCase);
         }
 
+        [Theory]
+        [InlineData(DatabaseEngine.SQLite)]
+        [InlineData(DatabaseEngine.PostgreSQL)]
+        [InlineData(DatabaseEngine.MySQL)]
+        [InlineData(DatabaseEngine.SQLServer)]
+        public void ParseEntityPaged_GroupByWithAggregates_SelectsOnlyKeysAndAggregates(DatabaseEngine engine)
+        {
+            // Caminho paginado com GROUP BY (resgate da branch data-toolkit-init):
+            // mesmo contrato do não-paginado + cláusula de paginação.
+            var entity = new SampleEntity { Active = true };
+            var aggregates = new Dictionary<string, DataAggregationType>
+            {
+                { "Height", DataAggregationType.Sum },
+                { "Id", DataAggregationType.Count }
+            };
+
+            var sql = EntitySqlParser.ParseEntityPaged(entity, engine, PersistenceAction.Query, entity,
+                                                        offset: 10, pageSize: 20,
+                                                        groupAttributes: "Active",
+                                                        aggregates: aggregates);
+
+            Assert.NotNull(sql);
+            Assert.Contains("GROUP BY", sql);
+            var select = sql.Substring(0, sql.IndexOf("FROM", StringComparison.OrdinalIgnoreCase));
+            Assert.Contains("SUM", select);
+            Assert.Contains("COUNT", select);
+            Assert.DoesNotContain("resume", select, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("weight", select, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("doc_number", select, StringComparison.OrdinalIgnoreCase);
+        }
+
         #endregion
 
         #region Relational & Aggregation columns
