@@ -306,6 +306,14 @@ namespace Rochas.SqlWrapper.Helpers
             string entityColumnName = string.Empty;
             string entityAttributeName = string.Empty;
 
+            // Consulta agrupada com agregados: o SELECT só pode conter as chaves
+            // de grupo e as expressões agregadas — qualquer outra coluna quebra
+            // no PostgreSQL (42803) e no SQL Server. Sem agregados, mantém o
+            // comportamento legado (todas as colunas).
+            bool isGroupedAggregation = action == PersistenceAction.Query
+                && !string.IsNullOrWhiteSpace(groupAttributes)
+                && aggregates != null && aggregates.Count > 0;
+
             if (entitySqlData != null)
                 foreach (var item in entitySqlData)
                 {
@@ -344,8 +352,10 @@ namespace Rochas.SqlWrapper.Helpers
                                 new DataAggregationColumn { ColumnName = aggregationColumn, AggregationType = aggregationType }, null),
                                 tableName, entityAttributeName, engine, ref columnList);
                         }
-                        else
+                        else if (!isGroupedAggregation)
                         {
+                            // Modo agrupado com agregados: chaves e agregados já
+                            // entraram acima; nada mais pode constar no SELECT.
                             SetPredicateSqlParameters(itemChildKeyPair, engine, action, tableName, keyColumnName, entityColumnName, entityAttributeName,
                                                       recordLimit, showAttributes, ref columnList, ref valueList, ref columnValueList);
                         }

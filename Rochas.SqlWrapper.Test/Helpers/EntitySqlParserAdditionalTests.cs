@@ -105,6 +105,36 @@ namespace Rochas.SqlWrapper.Test
             Assert.Contains("COUNT", sql);
         }
 
+        [Theory]
+        [InlineData(DatabaseEngine.SQLite)]
+        [InlineData(DatabaseEngine.PostgreSQL)]
+        [InlineData(DatabaseEngine.MySQL)]
+        [InlineData(DatabaseEngine.SQLServer)]
+        public void ParseEntity_GroupByWithAggregates_SelectsOnlyKeysAndAggregates(DatabaseEngine engine)
+        {
+            // Contrato PG-válido: com GROUP BY + agregados, o SELECT só pode conter
+            // as chaves de grupo e as expressões agregadas (42803 no PostgreSQL).
+            var entity = new SampleEntity { Active = true };
+            var aggregates = new Dictionary<string, DataAggregationType>
+            {
+                { "Height", DataAggregationType.Sum },
+                { "Id", DataAggregationType.Count }
+            };
+
+            var sql = EntitySqlParser.ParseEntity(entity, engine, PersistenceAction.Query, entity,
+                                                   groupAttributes: "Active",
+                                                   aggregates: aggregates);
+
+            Assert.NotNull(sql);
+            Assert.Contains("GROUP BY", sql);
+            var select = sql.Substring(0, sql.IndexOf("FROM", StringComparison.OrdinalIgnoreCase));
+            Assert.Contains("SUM", select);
+            Assert.Contains("COUNT", select);
+            Assert.DoesNotContain("resume", select, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("weight", select, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("doc_number", select, StringComparison.OrdinalIgnoreCase);
+        }
+
         #endregion
 
         #region Relational & Aggregation columns
