@@ -14,8 +14,8 @@
     <PackageTags>sql ansisql mysql sqlserver postgresql sqlite parser translate rochas dapper bwoq</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseFile>GNUv2_License.txt</PackageLicenseFile>
-    <Version>1.4.7</Version>
-    <PackageReleaseNotes>v1.4.7 - [FIX] Chave de grupo com [Column] divergente exige alias AS "Propriedade" no SELECT (Dapper não materializava a chave). v1.4.6 - [FIX] ParseEntityPaged aceita groupAttributes (GROUP BY + agregados em paginadas; resgate da branch data-toolkit-init). v1.4.5 - [FIX] GroupBy com agregados: SELECT só com chaves + expressões (42803 no PostgreSQL). [PERF] EntityReflector com cache. [DOCS] README em 5 idiomas. Referência Data.Specification via NuGet (1.6.3). v1.4.4 - Build/pack normalization. v1.0.0 - Extração do parser/refletor do DapperRepository 1.9.5.</PackageReleaseNotes>
+    <Version>1.4.8</Version>
+    <PackageReleaseNotes>v1.4.8 - [FIX] GROUP BY com agregados: SELECT só com chaves (match exato, case-insensitive) + expressões agregadas, com alias AS quando a coluna difere da propriedade (42803 no PostgreSQL; Dapper não materializava a chave). v1.4.6 - [FIX] ParseEntityPaged aceita groupAttributes (GROUP BY + agregados em paginadas; resgate da branch data-toolkit-init). v1.4.5 - [FIX] GroupBy com agregados: SELECT só com chaves + expressões. [PERF] EntityReflector com cache. [DOCS] README em 5 idiomas. Referência Data.Specification via NuGet (1.6.3). v1.4.4 - Build/pack normalization. v1.0.0 - Extração do parser/refletor do DapperRepository 1.9.5.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>

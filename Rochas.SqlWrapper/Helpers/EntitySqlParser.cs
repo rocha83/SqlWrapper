@@ -316,6 +316,11 @@ namespace Rochas.SqlWrapper.Helpers
             bool isGroupedAggregation = action == PersistenceAction.Query
                 && !string.IsNullOrWhiteSpace(groupAttributes)
                 && aggregates != null && aggregates.Count > 0;
+            // Match exato (case-insensitive) das chaves: substring (Contains)
+            // vazava colunas ("ProductId".Contains("Id") incluía "id" no SELECT).
+            var groupedKeys = new System.Collections.Generic.HashSet<string>(
+                (groupAttributes ?? string.Empty).Split(',').Select(s => s.Trim()),
+                System.StringComparer.OrdinalIgnoreCase);
 
             if (entitySqlData != null)
                 foreach (var item in entitySqlData)
@@ -329,7 +334,7 @@ namespace Rochas.SqlWrapper.Helpers
                         itemChildKeyPair = (KeyValuePair<object, object>)item.Value;
                         entityColumnName = ((KeyValuePair<object, object>)item.Value).Key.ToString();
 
-                        if (!string.IsNullOrWhiteSpace(groupAttributes) && groupAttributes.Contains(entityAttributeName))
+                        if (isGroupedAggregation ? groupedKeys.Contains(entityAttributeName) : (!string.IsNullOrWhiteSpace(groupAttributes) && groupAttributes.Contains(entityAttributeName)))
                         {
                             // Alias obrigatório quando a coluna difere da propriedade
                             // ([Column] snake_case): sem ele o Dapper não materializa

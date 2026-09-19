@@ -189,6 +189,10 @@ namespace Rochas.SqlWrapper.Test
             Assert.Contains("GROUP BY", sql);
             var select = sql.Substring(0, sql.IndexOf("FROM", StringComparison.OrdinalIgnoreCase));
             Assert.Contains("ChildId", select);
+            // Match exato das chaves (case-insensitive): "ChildId" não pode vazar
+            // a coluna "id" para o SELECT (Contains de substring quebraria no PG).
+            // Regex ancora a coluna solta: casa `"id" AS` mas não `"child_id"`.
+            Assert.DoesNotMatch(@"(?i)(?<![\w])""?id""?(?=[\s,]|$)", select);
         }
 
         #endregion
