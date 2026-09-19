@@ -330,7 +330,15 @@ namespace Rochas.SqlWrapper.Helpers
                         entityColumnName = ((KeyValuePair<object, object>)item.Value).Key.ToString();
 
                         if (!string.IsNullOrWhiteSpace(groupAttributes) && groupAttributes.Contains(entityAttributeName))
-                            columnList += string.Format("{0}.{1}, ", QuoteIdentifier(tableName, engine), QuoteIdentifier(entityColumnName, engine));
+                        {
+                            // Alias obrigatório quando a coluna difere da propriedade
+                            // ([Column] snake_case): sem ele o Dapper não materializa
+                            // a chave de grupo (product_id !→ ProductId).
+                            var groupAlias = !entityAttributeName.Equals(entityColumnName)
+                                ? string.Format(" AS {0}", QuoteIdentifier(entityAttributeName, engine))
+                                : string.Empty;
+                            columnList += string.Format("{0}.{1}{2}, ", QuoteIdentifier(tableName, engine), QuoteIdentifier(entityColumnName, engine), groupAlias);
+                        }
                     }
 
                     if (item.Key.Equals("TableName"))

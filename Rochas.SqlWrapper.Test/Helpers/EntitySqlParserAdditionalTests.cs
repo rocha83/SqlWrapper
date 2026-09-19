@@ -166,6 +166,31 @@ namespace Rochas.SqlWrapper.Test
             Assert.DoesNotContain("doc_number", select, StringComparison.OrdinalIgnoreCase);
         }
 
+        [Theory]
+        [InlineData(DatabaseEngine.SQLite)]
+        [InlineData(DatabaseEngine.PostgreSQL)]
+        [InlineData(DatabaseEngine.MySQL)]
+        [InlineData(DatabaseEngine.SQLServer)]
+        public void ParseEntity_GroupByKey_AliasedWhenColumnDiffers(DatabaseEngine engine)
+        {
+            // Mandatório: chave de grupo com [Column] divergente exige alias
+            // AS "Propriedade" — sem ele o Dapper não materializa a chave.
+            var entity = new SampleEntity { Active = true };
+            var aggregates = new Dictionary<string, DataAggregationType>
+            {
+                { "Height", DataAggregationType.Sum }
+            };
+
+            var sql = EntitySqlParser.ParseEntity(entity, engine, PersistenceAction.Query, entity,
+                                                   groupAttributes: "ChildId",
+                                                   aggregates: aggregates);
+
+            Assert.NotNull(sql);
+            Assert.Contains("GROUP BY", sql);
+            var select = sql.Substring(0, sql.IndexOf("FROM", StringComparison.OrdinalIgnoreCase));
+            Assert.Contains("ChildId", select);
+        }
+
         #endregion
 
         #region Relational & Aggregation columns
