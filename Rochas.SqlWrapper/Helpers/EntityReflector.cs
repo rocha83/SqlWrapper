@@ -284,6 +284,15 @@ namespace Rochas.SqlWrapper.Helpers
                         else
                             columnValue = SqlDefaultValue.Null;
                         break;
+                    case SQL.DataType.DateOnly:
+                        // Sem referência de tipo (netstandard2.1): ISO via IFormattable; default vira NULL
+                        var isoDate = ((IFormattable)columnValue).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+                        columnValue = isoDate == "0001-01-01" ? SqlDefaultValue.Null : string.Concat("'", isoDate, "'");
+                        break;
+                    case SQL.DataType.TimeOnly:
+                        var isoTime = ((IFormattable)columnValue).ToString("HH:mm:ss", CultureInfo.InvariantCulture);
+                        columnValue = string.Concat("'", isoTime, "'");
+                        break;
                     case SQL.DataType.Float:
                     case SQL.DataType.Double:
                     case SQL.DataType.Decimal:

@@ -11,6 +11,8 @@ namespace Rochas.SqlWrapper.Helpers.SQL
         public const string Long = "System.Int64";
         public const string String = "System.String";
         public const string DateTime = "System.DateTime";
+        public const string DateOnly = "System.DateOnly";
+        public const string TimeOnly = "System.TimeOnly";
         public const string Binary = "System.Byte[]";
         public const string Float = "System.Single";
         public const string Double = "System.Double";
