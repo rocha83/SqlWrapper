@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Concurrent;
+using System.Text;
 using System.Linq;
 using System.Reflection;
 using System.Collections.Generic;
@@ -15,6 +17,161 @@ namespace Rochas.SqlWrapper.Helpers
     public static class EntitySqlParser
     {
 		#region Public Methods
+
+		#region Statement cache (v1.5.0)
+
+		// Cache em memória dos statements de leitura, compartilhado entre
+		// ParseEntity/ParseEntityPaged (cross entre métodos/chamadas).
+		// Estratégia snapshot: a chave cobre tudo que molda o texto SQL
+		// (opções + valores formatados); o hit copia o snapshot {Sql, Params}.
+		// Só Query/Count (escrita varia no SET; Get por PK dispersaria a chave).
+
+		private const int StatementCacheMaxEntries = 4096;
+		private static readonly ConcurrentDictionary<string, CachedStatement> _statementCache =
+			new ConcurrentDictionary<string, CachedStatement>();
+
+		private sealed class CachedStatement
+		{
+			public string Sql;
+			public KeyValuePair<string, object>[] Params = Array.Empty<KeyValuePair<string, object>>();
+		}
+
+		private static bool IsCacheableStatement(PersistenceAction action,
+			Dictionary<string, object> sqlParameters, object filterEntity)
+			=> (action == PersistenceAction.Query || action == PersistenceAction.Count)
+			   && sqlParameters != null && filterEntity != null;
+
+		// Predicado de inclusão extraído de SetFilterSqlParameters (fonte única).
+		internal static bool IsFilterValueIncluded(object filterColumnValue, bool rangeFilter)
+		{
+			if (filterColumnValue is bool boolValue && !boolValue)
+				return false;
+			return rangeFilter
+				|| (filterColumnValue != null
+					&& filterColumnValue.ToString() != SqlDefaultValue.Null
+					&& filterColumnValue.ToString() != SqlDefaultValue.Zero
+					&& filterColumnValue.ToString() != "''"
+					&& !(filterColumnValue is Guid guidVal && guidVal == Guid.Empty)
+					&& !(filterColumnValue is DateTime dtVal && dtVal == DateTime.MinValue));
+		}
+
+		private static bool ComputeCompareRule(PersistenceAction action, object filterColumnValue,
+			string filterColumnNameLower, bool isKeyColumn, bool isForeignKey)
+		{
+			return ((action == PersistenceAction.Query)
+					 || (action == PersistenceAction.Count))
+				 && !(filterColumnValue is bool)
+				 && !(filterColumnValue is DateTime)
+				 && !(filterColumnValue is DateTimeOffset)
+				 && !(filterColumnValue is double)
+				 && !(filterColumnValue is float)
+				 && !(filterColumnValue is decimal)
+				 && !long.TryParse(filterColumnValue.ToString(), out _)
+				 && !filterColumnNameLower.Contains("date")
+				 && !isKeyColumn
+				 && !isForeignKey;
+		}
+
+		private static string FingerprintAggregates(Dictionary<string, DataAggregationType> aggregates)
+		{
+			if (aggregates == null || aggregates.Count == 0)
+				return "-";
+			return string.Join(";", aggregates.OrderBy(k => k.Key).Select(k => k.Key + ":" + k.Value.ToString()));
+		}
+
+		private static string FingerprintRanges(IDictionary<string, object[]> rangeValues)
+		{
+			if (rangeValues == null || rangeValues.Count == 0)
+				return "-";
+			var sb = new StringBuilder();
+			foreach (var kv in rangeValues.OrderBy(k => k.Key))
+			{
+				sb.Append(kv.Key).Append('=');
+				if (kv.Value != null)
+					foreach (var v in kv.Value)
+						sb.Append(v?.ToString() ?? "~").Append(',');
+				sb.Append(';');
+			}
+			return sb.ToString();
+		}
+
+		private static string BuildStatementKey(Type entityType, PropertyInfo[] entityProps,
+			object entity, object filterEntity, DatabaseEngine engine, PersistenceAction action,
+			int recordLimit, int offset, int pageSize, bool filterConjunction,
+			bool onlyListableAttributes, string showAttributes, string groupAttributes,
+			string sortAttributes, bool orderDescending, bool readUncommited,
+			Dictionary<string, DataAggregationType> aggregates)
+		{
+			var sb = new StringBuilder(512);
+			sb.Append((int)engine).Append('|').Append((int)action).Append('|').Append(entityType.FullName).Append('|');
+			sb.Append(recordLimit).Append('|').Append(offset).Append('|').Append(pageSize).Append('|');
+			sb.Append(filterConjunction ? '1' : '0').Append('|');
+			sb.Append(onlyListableAttributes ? '1' : '0').Append('|');
+			sb.Append(showAttributes ?? string.Empty).Append('|');
+			sb.Append(groupAttributes ?? string.Empty).Append('|');
+			sb.Append(sortAttributes ?? string.Empty).Append('|');
+			sb.Append(orderDescending ? '1' : '0').Append('|');
+			sb.Append(readUncommited ? '1' : '0').Append('|');
+			sb.Append(FingerprintAggregates(aggregates)).Append('|');
+			var rangeValues = EntityReflector.GetEntityRangeFilter(entity, entityProps);
+			sb.Append(FingerprintRanges(rangeValues)).Append('|');
+
+			foreach (var prop in entityProps)
+			{
+				// Mesmas exclusões estáveis de GetPropertiesValueList.
+				if (prop.GetCustomAttributes().Any(a => a is RelatedEntityAttribute))
+					continue;
+				if (prop.GetCustomAttributes().Any(a => a is NotMappedAttribute))
+					continue;
+				if (prop.PropertyType == typeof(byte[][]))
+					continue;
+				var relational = prop.GetCustomAttribute(typeof(RelationalColumn)) as RelationalColumn;
+				var aggregation = prop.GetCustomAttribute(typeof(DataAggregationColumn)) as DataAggregationColumn;
+				var isQueryOnly = relational != null || aggregation != null;
+				if (isQueryOnly && action != PersistenceAction.Query && action != PersistenceAction.Get)
+					continue;
+
+				var formatted = EntityReflector.FormatSQLInputValue(prop, prop.GetValue(filterEntity), action);
+				sb.Append(prop.Name).Append('=');
+				if (formatted == null)
+					sb.Append("");
+				else if (formatted is byte[])
+					return null; // byte[] em filtro: ToString não distingue conteúdos — fora do cache.
+				else if (formatted is Array arr)
+				{
+					sb.Append("arr:").Append(arr.Length).Append(':');
+					foreach (var el in arr)
+						sb.Append(el?.ToString() ?? "~").Append(',');
+				}
+				else
+					sb.Append(formatted.GetType().FullName).Append(':').Append(formatted.ToString());
+				sb.Append(';');
+			}
+
+			return sb.ToString();
+		}
+
+		private static bool TryGetCachedStatement(string key, Dictionary<string, object> sqlParameters, out string sql)
+		{
+			sql = null;
+			if (key == null || !_statementCache.TryGetValue(key, out var entry))
+				return false;
+			foreach (var kv in entry.Params)
+				sqlParameters[kv.Key] = kv.Value;
+			sql = entry.Sql;
+			return true;
+		}
+
+		private static void StoreStatement(string key, string sql, Dictionary<string, object> sqlParameters)
+		{
+			if (key == null)
+				return;
+			if (_statementCache.Count >= StatementCacheMaxEntries)
+				_statementCache.Clear();
+			_statementCache[key] = new CachedStatement { Sql = sql, Params = sqlParameters.ToArray() };
+		}
+
+		#endregion
 
 		/// <summary>
 		/// Parse entity model object instance to SQL ANSI CRUD statements
@@ -53,6 +210,18 @@ namespace Rochas.SqlWrapper.Helpers
                 if (onlyListableAttributes)
                     EntityReflector.ValidateListableAttributes(entityProps, showAttributes, out displayAttributes);
 
+                string snapshotKey = null;
+                var cacheEnabled = IsCacheableStatement(persistenceAction, sqlParameters, filterEntity);
+                if (cacheEnabled)
+                {
+                    snapshotKey = BuildStatementKey(entityType, entityProps, entity, filterEntity, engine,
+                        persistenceAction, recordLimit, 0, 0, filterConjunction, onlyListableAttributes,
+                        showAttributes ?? string.Empty, groupAttributes, sortAttributes, orderDescending,
+                        readUncommited, aggregates);
+                    if (TryGetCachedStatement(snapshotKey, sqlParameters, out var cachedSql))
+                        return cachedSql;
+                }
+
                 sqlInstruction = GetSqlInstruction(entity, entityType, entityProps, engine, persistenceAction, filterEntity,
                                                    recordLimit, filterConjunction, displayAttributes, groupAttributes, readUncommited, sqlParameters, aggregates);
 
@@ -77,6 +246,9 @@ namespace Rochas.SqlWrapper.Helpers
                     else
                         sqlInstruction = string.Format(sqlInstruction, string.Empty);
                 }
+
+                if (cacheEnabled && snapshotKey != null)
+                    StoreStatement(snapshotKey, sqlInstruction, sqlParameters);
 
                 return sqlInstruction;
             }
@@ -106,6 +278,18 @@ namespace Rochas.SqlWrapper.Helpers
                 if (EntityReflector.GetKeyColumn(entityProps) == null)
                     throw new KeyNotFoundException("Entity key column annotation not found.");
 
+                string pagedSnapshotKey = null;
+                var pagedCacheEnabled = IsCacheableStatement(persistenceAction, sqlParameters, filterEntity);
+                if (pagedCacheEnabled)
+                {
+                    pagedSnapshotKey = BuildStatementKey(entityType, entityProps, entity, filterEntity, engine,
+                        persistenceAction, 0, offset, pageSize, filterConjunction, false,
+                        string.Empty, groupAttributes, sortAttributes, orderDescending,
+                        readUncommited, aggregates);
+                    if (TryGetCachedStatement(pagedSnapshotKey, sqlParameters, out var pagedCachedSql))
+                        return pagedCachedSql;
+                }
+
                 sqlInstruction = GetSqlInstruction(entity, entityType, entityProps, engine, PersistenceAction.Query, filterEntity,
                                                    0, filterConjunction, displayAttributes, groupAttributes, readUncommited, sqlParameters, aggregates);
 
@@ -131,6 +315,9 @@ namespace Rochas.SqlWrapper.Helpers
                     // Adiciona OFFSET/FETCH para paginação
                     sqlInstruction = sqlInstruction.TrimEnd(';') + GetPaginationClause(engine, offset, pageSize);
                 }
+
+                if (pagedCacheEnabled && pagedSnapshotKey != null)
+                    StoreStatement(pagedSnapshotKey, sqlInstruction, sqlParameters);
 
                 return sqlInstruction;
             }
@@ -326,6 +513,7 @@ namespace Rochas.SqlWrapper.Helpers
                 foreach (var item in entitySqlData)
                 {
                     var itemChildKeyPair = new KeyValuePair<object, object>();
+                    var groupedAliasAdded = false;
 
                     // Grouping predicate
                     if (!item.Key.Equals("TableName"))
@@ -343,6 +531,7 @@ namespace Rochas.SqlWrapper.Helpers
                                 ? string.Format(" AS {0}", QuoteIdentifier(entityAttributeName, engine))
                                 : string.Empty;
                             columnList += string.Format("{0}.{1}{2}, ", QuoteIdentifier(tableName, engine), QuoteIdentifier(entityColumnName, engine), groupAlias);
+                            groupedAliasAdded = true;
                         }
                     }
 
@@ -368,10 +557,12 @@ namespace Rochas.SqlWrapper.Helpers
                                 new DataAggregationColumn { ColumnName = aggregationColumn, AggregationType = aggregationType }, null),
                                 tableName, entityAttributeName, engine, ref columnList);
                         }
-                        else if (!isGroupedAggregation)
+                        else if (!isGroupedAggregation && !groupedAliasAdded)
                         {
                             // Modo agrupado com agregados: chaves e agregados já
                             // entraram acima; nada mais pode constar no SELECT.
+                            // Sem agregados: a coluna do grupo já entrou com
+                            // alias acima — não repetir (coluna duplicada).
                             SetPredicateSqlParameters(itemChildKeyPair, engine, action, tableName, keyColumnName, entityColumnName, entityAttributeName,
                                                       recordLimit, showAttributes, ref columnList, ref valueList, ref columnValueList);
                         }
@@ -586,30 +777,13 @@ namespace Rochas.SqlWrapper.Helpers
                         rangeFilter = rangeValues.ContainsKey(columnNameStr);
                     }
 
-                    if (((filterColumnValue != null)
-                            && (filterColumnValue.ToString() != SqlDefaultValue.Null)
-                            && (filterColumnValue.ToString() != SqlDefaultValue.Zero)
-                            && (filterColumnValue.ToString() != "''")
-                            && !(filterColumnValue is Guid guidVal && guidVal == Guid.Empty)
-                            && !(filterColumnValue is DateTime dtVal && dtVal == DateTime.MinValue))
-                        || rangeFilter)
+                    if (IsFilterValueIncluded(filterColumnValue, rangeFilter))
                     {
                         var filterColumnNameLower = filterColumnName.ToString().ToLower();
                         var isKeyColumn = string.Equals(filterColumnName.ToString(), string.Concat(tableName, ".", keyColumnName), StringComparison.OrdinalIgnoreCase);
                         var isForeignKey = filterColumnNameLower.EndsWith("_id") || filterColumnNameLower.EndsWith(".id");
 
-                        bool compareRule = ((action == PersistenceAction.Query)
-                                             || (action == PersistenceAction.Count))
-                                         && !(filterColumnValue is bool)
-                                         && !(filterColumnValue is DateTime)
-                                         && !(filterColumnValue is DateTimeOffset)
-                                         && !(filterColumnValue is double)
-                                         && !(filterColumnValue is float)
-                                         && !(filterColumnValue is decimal)
-                                         && !long.TryParse(filterColumnValue.ToString(), out long fake)
-                                         && !filterColumnNameLower.Contains("date")
-                                         && !isKeyColumn
-                                         && !isForeignKey;
+                        bool compareRule = ComputeCompareRule(action, filterColumnValue, filterColumnNameLower, isKeyColumn, isForeignKey);
 
                         string comparation = string.Empty;
 

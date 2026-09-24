@@ -76,7 +76,9 @@ namespace Rochas.SqlWrapper.Helpers
         {
             return EntityPropsCache.GetOrAdd(entityType, t =>
             {
-                var nameSpacePrefix = t.Namespace.Substring(0, t.Namespace.IndexOf("."));
+                var ns = t.Namespace ?? string.Empty;
+                var dot = ns.IndexOf(".");
+                var nameSpacePrefix = dot > 0 ? ns.Substring(0, dot) : ns;
 
                 return t.GetProperties()
                     .Where(p => !(p.PropertyType.IsClass && p.PropertyType.Namespace?.StartsWith(nameSpacePrefix) == true))
@@ -196,7 +198,7 @@ namespace Rochas.SqlWrapper.Helpers
             }
         }
 
-        private static string GetTableName(Type entityType, DatabaseEngine? engine = null)
+        internal static string GetTableName(Type entityType, DatabaseEngine? engine = null)
         {
             var name = TableNames.GetOrAdd(entityType, t =>
             {
@@ -210,7 +212,7 @@ namespace Rochas.SqlWrapper.Helpers
             return name;
         }
 
-        private static object FormatSQLInputValue(PropertyInfo column, object columnValue, PersistenceAction action)
+        internal static object FormatSQLInputValue(PropertyInfo column, object columnValue, PersistenceAction action)
         {
             if (columnValue != null)
             {

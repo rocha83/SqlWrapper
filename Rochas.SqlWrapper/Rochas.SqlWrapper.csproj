@@ -15,8 +15,8 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>sqlwrapper-icon.png</PackageIcon>
     <PackageLicenseFile>GNUv2_License.txt</PackageLicenseFile>
-    <Version>1.4.9</Version>
-    <PackageReleaseNotes>v1.4.9 - [FIX] DateOnly/TimeOnly interpolated as quoted ISO literals (yyyy-MM-dd, HH:mm:ss; MinValue becomes NULL) — without it PostgreSQL read DateOnly as integer arithmetic (42804), an error masked on SQLite by type affinity. v1.4.8 - [FIX] GROUP BY with aggregates: SELECT with keys only (exact, case-insensitive match) + aggregate expressions, with AS alias when the column differs from the property (42803 on PostgreSQL; Dapper did not materialize the key). v1.4.6 - [FIX] ParseEntityPaged accepts groupAttributes (GROUP BY + aggregates in paged queries; rescue of the data-toolkit-init branch). v1.4.5 - [FIX] GroupBy with aggregates: SELECT with keys + expressions only. [PERF] EntityReflector with cache. [DOCS] README in 5 languages. Data.Specification reference via NuGet (1.6.3). v1.4.4 - Build/pack normalization. v1.0.0 - Parser/reflector extraction from DapperRepository 1.9.5.</PackageReleaseNotes>
+    <Version>1.5.0</Version>
+    <PackageReleaseNotes>v1.5.0 - [NEW] In-memory statement snapshot cache for Query/Count (shared across methods, capped); [FIX] duplicate grouped columns in SELECT without aggregates. v1.4.10 - [FIX] EntityReflector handles dotless/null namespaces (IndexOf -1/NRE). v1.4.8 - [FIX] GROUP BY with aggregates: SELECT with keys only (exact, case-insensitive match) + aggregate expressions, with AS alias when the column differs from the property (42803 on PostgreSQL; Dapper did not materialize the key). v1.4.6 - [FIX] ParseEntityPaged accepts groupAttributes (GROUP BY + aggregates in paged queries; rescue of the data-toolkit-init branch). v1.4.5 - [FIX] GroupBy with aggregates: SELECT with keys + expressions only. [PERF] EntityReflector with cache. [DOCS] README in 5 languages. Data.Specification reference via NuGet (1.6.3). v1.4.4 - Build/pack normalization. v1.0.0 - Parser/reflector extraction from DapperRepository 1.9.5.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
