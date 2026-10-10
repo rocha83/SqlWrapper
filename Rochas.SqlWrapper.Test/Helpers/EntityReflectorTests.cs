@@ -175,7 +175,7 @@ namespace Rochas.SqlWrapper.Test
         }
 
         [Fact]
-        public void GetPropertiesValueList_DateTimeOnUpdate_UsesNormalDate()
+        public void GetPropertiesValueList_DateTimeOnUpdate_UsesCompleteDateTime()
         {
             var entity = new SampleManyForeignEntity
             {
@@ -189,7 +189,7 @@ namespace Rochas.SqlWrapper.Test
 
             Assert.NotNull(list);
             var pair = (KeyValuePair<object, object>)list["CreationDate"];
-            Assert.Equal("'2024-05-10'", pair.Value);
+            Assert.Equal("'2024-05-10 14:30:00'", pair.Value);
         }
 
         [Fact]

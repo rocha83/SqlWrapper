@@ -277,11 +277,9 @@ namespace Rochas.SqlWrapper.Helpers
                     case SQL.DataType.DateTime:
                         if (!(((DateTime)columnValue).Equals(DateTime.MinValue)))
                         {
-                            var dateFormat = (action == PersistenceAction.Add) ?
-                                              DateTimeFormat.CompleteDateTime :
-                                              DateTimeFormat.NormalDate;
-
-                            columnValue = "'" + ((DateTime)columnValue).ToString(dateFormat) + "'";
+                            // DateTime sempre completo, em qualquer acao (Add/Update/...):
+                            // NormalDate aqui truncava a hora no UPDATE (hotfix 1.5.1).
+                            columnValue = "'" + ((DateTime)columnValue).ToString(DateTimeFormat.CompleteDateTime) + "'";
                         }
                         else
                             columnValue = SqlDefaultValue.Null;
